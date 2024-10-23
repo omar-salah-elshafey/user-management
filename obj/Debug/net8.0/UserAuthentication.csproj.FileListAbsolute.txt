@@ -266,3 +266,4 @@ C:\Users\osoma\source\repos\UserAuthentication\obj\Debug\net8.0\ref\UserAuthenti
 C:\Users\osoma\source\repos\UserAuthentication\bin\Debug\net8.0\BouncyCastle.Cryptography.dll
 C:\Users\osoma\source\repos\UserAuthentication\bin\Debug\net8.0\MailKit.dll
 C:\Users\osoma\source\repos\UserAuthentication\bin\Debug\net8.0\MimeKit.dll
+C:\Users\osoma\source\repos\UserAuthentication\obj\Debug\net8.0\UserAuthentication.sourcelink.json

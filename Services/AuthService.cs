@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
@@ -91,7 +92,11 @@ namespace UserAuthentication.Services
             var authModel = new AuthModel();
             var user = await _userManager.FindByEmailAsync(loginModel.Email); //check if the user exists
             if (user == null || !await _userManager.CheckPasswordAsync(user, loginModel.Password))
-                return new AuthModel { Message = "Invalid Email or Password!" };
+            {
+                authModel.IsAuthenticated = false;
+                authModel.Message = "Email or Password is incorrect!";
+                return authModel;
+            }
             if (!user.EmailConfirmed)
                 return new AuthModel { Message = "Please Confirm Your Email First." };
             var jwtSecurityToken = await _tokenService.CreateJwtTokenAsync(user);
@@ -103,19 +108,29 @@ namespace UserAuthentication.Services
             authModel.Username = user.UserName;
             authModel.IsConfirmed = true;
 
+            //checj if the user already has an active refresh token
+            if (user.RefreshTokens.Any(t => t.IsActive))
+            {
+                var activeToken = user.RefreshTokens.FirstOrDefault(t => t.IsActive);
+                authModel.RefreshToken = activeToken.Token;
+                authModel.RefreshTokenExpiresOn = activeToken.ExpiresOn;
+            }
+            else
+            {
+                // Generate a new refresh token and add it to the user's tokens
+                var refreshToken = await _tokenService.GenerateRefreshToken();
+                user.RefreshTokens.Add(refreshToken);
+                await _userManager.UpdateAsync(user);
+
+                // Send the refresh token along with the JWT token
+                authModel.RefreshToken = refreshToken.Token;
+                authModel.RefreshTokenExpiresOn = refreshToken.ExpiresOn;
+            }
+
             return authModel;
         }
+        
 
-        public async Task<AuthModel> DeleteUserAsync(string UserName)
-        {
-            var user = await _userManager.FindByNameAsync(UserName);
-            if (user is null)
-                return new AuthModel { Message = $"User with UserName: {UserName} isn't found!" };
-            var result = await _userManager.DeleteAsync(user);
-            if (!result.Succeeded)
-                return new AuthModel { Message = $"An Error Occured while Deleting the user{UserName}" };
-            return new AuthModel { Message = $"User with UserName: '{UserName}' has been Deleted successfully" };
-        }
 
         public async Task<string> AddRoleAsync(string role, string userName)
         {
@@ -142,5 +157,52 @@ namespace UserAuthentication.Services
                 return new AuthModel { Message = "Token is not valid!" };
             return new AuthModel { Message = "Your password has ben reseted successfully." };
         }
+
+        public async Task<AuthModel> ChangePasswordAsync(string email, string currentPassword, string newPassword)
+        {
+            if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(newPassword))
+                return new AuthModel { Message = "Email and Password are required!" };
+            var user = await _userManager.FindByEmailAsync(email);
+            if (user == null)
+                return new AuthModel { Message = "Email is not correct!" };
+            var result = await _userManager.ChangePasswordAsync(user, currentPassword, newPassword);
+            if (!result.Succeeded)
+                return new AuthModel { Message = "Something went wronge!" };
+            return new AuthModel { Message = "Your password has ben reseted successfully." };
+        }
+
+        public async Task<List<UserDto>> GetUSersAsync()
+        {
+            var users = await _userManager.Users.ToListAsync();
+            var userDto = new List<UserDto>();
+            foreach (var user in users)
+            {
+                var roles = await _userManager.GetRolesAsync(user);
+                userDto.Add(new UserDto
+                {
+                    FirstName = user.FirstName,
+                    LastName = user.LastName,
+                    UserName = user.UserName,
+                    Email = user.Email,
+                    Roles = roles.ToList(),
+                });
+            }
+            return userDto;
+        }
+
+        public async Task<AuthModel> DeleteUserAsync(string UserName)
+        {
+            var user = await _userManager.FindByNameAsync(UserName);
+            if (user is null)
+                return new AuthModel { Message = $"User with UserName: {UserName} isn't found!" };
+            var result = await _userManager.DeleteAsync(user);
+            if (!result.Succeeded)
+                return new AuthModel { Message = $"An Error Occured while Deleting the user{UserName}" };
+            return new AuthModel { Message = $"User with UserName: '{UserName}' has been Deleted successfully" };
+        }
+        //public Task LogoutAsync()
+        //{
+        //    throw new NotImplementedException();
+        //}
     }
 }

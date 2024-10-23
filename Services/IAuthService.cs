@@ -9,9 +9,12 @@ namespace UserAuthentication.Services
     {
         Task<AuthModel> RegisterAsync(RegisterUser registerUser);
         Task<AuthModel> LoginAsync(LoginModel loginModel);
-        Task<AuthModel> DeleteUserAsync(string userName);
         Task<string> AddRoleAsync(string role, string userName);
         Task<AuthModel> ResetPasswordAsync(string email, string token, string newPassword);
+        Task<AuthModel> ChangePasswordAsync(string email, string currentPassword, string newPassword);
+        Task<List<UserDto>> GetUSersAsync();
+        Task<AuthModel> DeleteUserAsync(string userName);
+        //Task LogoutAsync();
 
     }
 }

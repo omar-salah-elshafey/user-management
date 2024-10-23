@@ -27,7 +27,7 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 
 
 
-// Add token lifespan configuration
+// Add token lifespan configuration (Email verification token)
 builder.Services.Configure<DataProtectionTokenProviderOptions>(options =>
 {
     options.TokenLifespan = TimeSpan.FromMinutes(5); // Set token expiration to .... minutes
@@ -66,7 +66,7 @@ builder.Services.AddAuthentication(
     });
 
 
-
+builder.Services.AddLogging();
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
