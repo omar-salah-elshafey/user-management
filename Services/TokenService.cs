@@ -86,7 +86,7 @@ namespace UserAuthentication.Services
             authModel.Username = user.UserName;
             authModel.Roles = (await _userManager.GetRolesAsync(user)).ToList();
             authModel.RefreshToken = newRefreshToken.Token;
-            authModel.RefreshTokenExpiresOn = newRefreshToken.ExpiresOn;
+            authModel.RefreshTokenExpiresOn = newRefreshToken.ExpiresOn.ToLocalTime();
             return authModel;
         }
         
@@ -109,7 +109,8 @@ namespace UserAuthentication.Services
                 return false;
             }
             // Revoke the refresh token
-            refreshToken.RevokedOn = DateTime.UtcNow;
+            refreshToken.RevokedOn = DateTime.UtcNow.ToLocalTime();
+
             // Update user with revoked token
             var result = await _userManager.UpdateAsync(user);
             if (result.Succeeded)

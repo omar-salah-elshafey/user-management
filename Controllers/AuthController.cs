@@ -67,16 +67,11 @@ namespace UserAuthentication.Controllers
                 SetRefreshTokenCookie(result.RefreshToken, result.RefreshTokenExpiresOn);
             }
 
-            return Ok(new
-            {
-                result.Token,
-                result.ExpiresAt,
-                result.RefreshToken,
-                result.RefreshTokenExpiresOn,
-            });
+            return Ok(result.Token);
         }
-
+        
         [HttpGet("refreshtoken")]
+        [Authorize]
         public async Task<IActionResult> RefreshToken()
         {
             var refreshToken = Request.Cookies["refreshToken"];
@@ -96,36 +91,37 @@ namespace UserAuthentication.Controllers
         }
 
         [HttpPost("reset-password")]
-        public async Task<IActionResult> ResetPasswordAsync(string email, string token, string newPassword)
+        public async Task<IActionResult> ResetPasswordAsync(ResetPasswordModel resetPasswordModel)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
-            var result = await _authService.ResetPasswordAsync(email, token, newPassword);
+            var result = await _authService.ResetPasswordAsync(resetPasswordModel);
             return Ok(result.Message);
         }
-
+        
         [HttpPost("change-password")]
-        public async Task<IActionResult> ChangePasswordAsync(string email, string currentPassword, string newPassword)
+        [Authorize]
+        public async Task<IActionResult> ChangePasswordAsync(ChangePasswordModel changePasswordModel)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
-            var result = await _authService.ChangePasswordAsync(email, currentPassword, newPassword);
+            var result = await _authService.ChangePasswordAsync(changePasswordModel);
             return Ok(result.Message);
         }
 
         [HttpPost("add-role")]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> AddRoleAsync(string role, string userName)
+        public async Task<IActionResult> AddRoleAsync(AddRoleModel roleModel)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
-            var user = await _userManager.FindByNameAsync(userName);
-            var result = await _authService.AddRoleAsync(role, userName);
+            var user = await _userManager.FindByNameAsync(roleModel.UserName);
+            var result = await _authService.AddRoleAsync(roleModel);
 
-            if (!result.Equals($"User {user.UserName} has been assignd to Role {role} Successfully :)"))
+            if (!result.Equals($"User {user.UserName} has been assignd to Role {roleModel.Role} Successfully :)"))
                 return BadRequest(result);
 
-            return Ok($"The user: {userName} has been assignd to Role {role} Successfully");
+            return Ok($"The user: {user.UserName} has been assignd to Role {roleModel.Role} Successfully");
         }
 
         [HttpGet("get-users")]
@@ -150,12 +146,18 @@ namespace UserAuthentication.Controllers
             return Ok($"User with UserName: '{UserName}' has been Deleted successfully");
         }
 
-        //[HttpPost("logout")]
-        //public async Task<IActionResult> Logout()
-        //{
-        //    await _authService.LogoutAsync();
-        //    return Ok(new { message = "Successfully logged out" });
-        //}
+        [HttpPost("logout")]
+        [Authorize]
+        public async Task<IActionResult> Logout()
+        {
+            var refreshToken = Request.Cookies["refreshToken"];
+            var result = await _authService.LogoutAsync(refreshToken);
+            if (!result)
+                return BadRequest(result);
+
+            RemoveRefreshTokenCookie(refreshToken);
+            return Ok(new { message = "Successfully logged out" });
+        }
 
         private void SetRefreshTokenCookie(string refreshToken, DateTime ex)
         {
@@ -167,6 +169,18 @@ namespace UserAuthentication.Controllers
                 SameSite = SameSiteMode.Strict
             };
             Response.Cookies.Append("refreshToken", refreshToken, cookieOptions);
+        }
+
+        private void RemoveRefreshTokenCookie(string refreshToken)
+        {
+            var cookieOptions = new CookieOptions
+            {
+                HttpOnly = true,
+                Expires = DateTime.UtcNow.AddDays(-1).ToLocalTime(),
+                Secure = true,    // Set this in production when using HTTPS
+                SameSite = SameSiteMode.Strict
+            };
+            Response.Cookies.Append("refreshToken", "", cookieOptions);
         }
     }
 }

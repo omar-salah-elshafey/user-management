@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using UserAuthentication.Models;
 using UserAuthentication.Services;
 using UserAuthenticationApp.Models;
 
@@ -18,14 +19,14 @@ namespace UserAuthentication.Email
         }
 
         [HttpPost("confirm-email")]
-        public async Task<IActionResult> VerifyEmail(string UserName, string token)
+        public async Task<IActionResult> VerifyEmail(ConfirmEmailModel confirmEmail)
         {
             // Validate the input fields (UserName and token)
-            if (string.IsNullOrEmpty(UserName) || string.IsNullOrEmpty(token))
+            if (string.IsNullOrEmpty(confirmEmail.Email) || string.IsNullOrEmpty(confirmEmail.Token))
                 return BadRequest(new { Message = "User ID and token are required." });
 
             // Call the service to verify the email
-            var result = await _emailService.VerifyEmail(UserName, token);
+            var result = await _emailService.VerifyEmail(confirmEmail);
 
             // Check if the verification failed
             if (!result.IsConfirmed)
@@ -57,12 +58,12 @@ namespace UserAuthentication.Email
         }
 
         [HttpPost("verify-password-reset-token")]
-        public async Task<IActionResult> VerifyResetPasswordRequestAsync(string email, string token)
+        public async Task<IActionResult> VerifyResetPasswordRequestAsync(ConfirmEmailModel verifyREsetPassword)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
             // Call the service to verify the email
-            var result = await _emailService.VerifyResetPasswordRequestAsync(email, token);
+            var result = await _emailService.VerifyResetPasswordRequestAsync(verifyREsetPassword);
 
             // Check if the verification failed
             if (!result.ISPasswordResetRequestVerified)

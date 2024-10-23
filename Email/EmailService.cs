@@ -6,6 +6,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.Identity;
 using UserAuthenticationApp.Models;
 using Microsoft.Extensions.Options;
+using UserAuthentication.Models;
 namespace UserAuthentication.Email
 {
     public class EmailService : IEmailService
@@ -38,16 +39,16 @@ namespace UserAuthentication.Email
             await smtp.DisconnectAsync(true);
         }
 
-        public async Task<AuthModel> VerifyEmail(string UserName, string token)
+        public async Task<AuthModel> VerifyEmail(ConfirmEmailModel confirmEmail)
         {
 
-            if (string.IsNullOrEmpty(UserName) || string.IsNullOrEmpty(token))
+            if (string.IsNullOrEmpty(confirmEmail.Email) || string.IsNullOrEmpty(confirmEmail.Token))
                 return new AuthModel { IsConfirmed = false, Message = "User ID and token are required." };
 
-            var user = await _userManager.FindByNameAsync(UserName);
+            var user = await _userManager.FindByEmailAsync(confirmEmail.Email);
             if (user == null)
                 return new AuthModel { IsConfirmed = false, Message = "User not found." };
-            var result = await _userManager.ConfirmEmailAsync(user, token);
+            var result = await _userManager.ConfirmEmailAsync(user, confirmEmail.Token);
             if (!result.Succeeded)
                 return new AuthModel { IsConfirmed = false, Message = "Token is not valid!" };
 
@@ -90,16 +91,16 @@ namespace UserAuthentication.Email
             return new AuthModel { Message = "A Password Reset Code has been sent to your Email!" };
         }
 
-        public async Task<AuthModel> VerifyResetPasswordRequestAsync(string email, string token)
+        public async Task<AuthModel> VerifyResetPasswordRequestAsync(ConfirmEmailModel verifyREsetPassword)
         {
 
-            if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(token))
+            if (string.IsNullOrEmpty(verifyREsetPassword.Email) || string.IsNullOrEmpty(verifyREsetPassword.Token))
                 return new AuthModel { ISPasswordResetRequestVerified = false, Message = "UserName and token are required." };
 
-            var user = await _userManager.FindByEmailAsync(email);
+            var user = await _userManager.FindByEmailAsync(verifyREsetPassword.Email);
             if (user == null)
                 return new AuthModel { ISPasswordResetRequestVerified = false, Message = "User not found." };
-            var result = await _userManager.VerifyUserTokenAsync(user, _userManager.Options.Tokens.PasswordResetTokenProvider, "ResetPassword", token);
+            var result = await _userManager.VerifyUserTokenAsync(user, _userManager.Options.Tokens.PasswordResetTokenProvider, "ResetPassword", verifyREsetPassword.Token);
             if (!result)
                 return new AuthModel { ISPasswordResetRequestVerified = false, Message = "Token is not valid!" };
 

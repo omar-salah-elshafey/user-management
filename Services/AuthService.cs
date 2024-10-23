@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.VisualStudio.Web.CodeGenerators.Mvc.Templates.BlazorIdentity.Pages.Manage;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -15,19 +16,23 @@ namespace UserAuthentication.Services
     {
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly RoleManager<IdentityRole> _roleManager;
-        //private readonly JWT _jwt;
         private readonly IEmailService _emailService;
         private readonly ITokenService _tokenService;
-        //private readonly IOptions<DataProtectionTokenProviderOptions> _tokenProviderOptions;
+        private readonly ILogger<AuthService> _logger;
+        private readonly IOptions<DataProtectionTokenProviderOptions> _tokenProviderOptions;
         public AuthService(UserManager<ApplicationUser> userManager,
             RoleManager<IdentityRole> roleManager,
             IEmailService emailService,
-            ITokenService tokenService)
+            ITokenService tokenService,
+            ILogger<AuthService> logger,
+            IOptions<DataProtectionTokenProviderOptions> tokenProviderOptions)
         {
             _userManager = userManager;
             _roleManager = roleManager;
             _emailService = emailService;
             _tokenService = tokenService;
+            _logger = logger;
+            _tokenProviderOptions = tokenProviderOptions;
         }
 
         public async Task<AuthModel> RegisterAsync(RegisterUser registerUser)
@@ -68,18 +73,15 @@ namespace UserAuthentication.Services
             var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
 
             // Dynamically get the expiration time from the options
-            //var expirationTime = _tokenProviderOptions.Value.TokenLifespan.TotalMinutes;
+            var expirationTime = _tokenProviderOptions.Value.TokenLifespan.TotalMinutes;
 
             await _emailService.SendEmailAsync(user.Email, "Email Verification Code.",
-                $"Hello {user.UserName}, \n Use this new token to verify your Email: {token}\n This code is Valid only for 5 Minutes.");
+                $"Hello {user.UserName}, \n Use this new token to verify your Email: {token}\n This code is Valid only for {expirationTime} Minutes.");
 
             return new AuthModel
             {
                 Email = user.Email,
-                //ExpiresAt = jwtSecurityToken.ValidTo,
                 IsAuthenticated = true,
-                //Roles = new List<string> { registerUser.Role },
-                //Token = new JwtSecurityTokenHandler().WriteToken(jwtSecurityToken),
                 Username = user.UserName,
                 Message = "A verification code has been sent to your Email.\n Verify Your Email to be able to login :) "
             };
@@ -132,40 +134,50 @@ namespace UserAuthentication.Services
         
 
 
-        public async Task<string> AddRoleAsync(string role, string userName)
+        public async Task<string> AddRoleAsync(AddRoleModel roleModel)
         {
-            var user = await _userManager.FindByNameAsync(userName);
+            var user = await _userManager.FindByNameAsync(roleModel.UserName);
             if (user == null)
                 return ("Invalid UserName!");
-            if (!await _roleManager.RoleExistsAsync(role))
+            if (!await _roleManager.RoleExistsAsync(roleModel.Role))
                 return ("Invalid Role!");
-            if (await _userManager.IsInRoleAsync(user, role))
+            if (await _userManager.IsInRoleAsync(user, roleModel.Role))
                 return ("User Is already assigned to this role!");
-            var result = await _userManager.AddToRoleAsync(user, role);
-            return $"User {userName} has been assignd to Role {role} Successfully :)";
+            var result = await _userManager.AddToRoleAsync(user, roleModel.Role);
+            return $"User {roleModel.UserName} has been assignd to Role {roleModel.Role} Successfully :)";
         }
 
-        public async Task<AuthModel> ResetPasswordAsync(string email, string token, string newPassword)
+        public async Task<AuthModel> ResetPasswordAsync(ResetPasswordModel resetPasswordModel)
         {
-            if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(newPassword))
+            if (string.IsNullOrEmpty(resetPasswordModel.Email) || string.IsNullOrEmpty(resetPasswordModel.NewPassword))
                 return new AuthModel { Message = "Email and Password are required!" };
-            var user = await _userManager.FindByEmailAsync(email);
+            var user = await _userManager.FindByEmailAsync(resetPasswordModel.Email);
             if (user == null)
                 return new AuthModel { Message = "Email is not correct!" };
-            var result = await _userManager.ResetPasswordAsync(user, token, newPassword);
+            if (!resetPasswordModel.NewPassword.Equals(resetPasswordModel.ConfirmNewPassword))
+            {
+                return new AuthModel { Message = "Confirm the new Password!" };
+            }
+            var result = await _userManager.ResetPasswordAsync(user, resetPasswordModel.Token, resetPasswordModel.NewPassword);
             if (!result.Succeeded)
                 return new AuthModel { Message = "Token is not valid!" };
             return new AuthModel { Message = "Your password has ben reseted successfully." };
         }
 
-        public async Task<AuthModel> ChangePasswordAsync(string email, string currentPassword, string newPassword)
+        public async Task<AuthModel> ChangePasswordAsync(ChangePasswordModel changePasswordModel)
         {
-            if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(newPassword))
+            if (string.IsNullOrEmpty(changePasswordModel.Email) || string.IsNullOrEmpty(changePasswordModel.CurrentPassword))
                 return new AuthModel { Message = "Email and Password are required!" };
-            var user = await _userManager.FindByEmailAsync(email);
+            var user = await _userManager.FindByEmailAsync(changePasswordModel.Email);
             if (user == null)
                 return new AuthModel { Message = "Email is not correct!" };
-            var result = await _userManager.ChangePasswordAsync(user, currentPassword, newPassword);
+            if(changePasswordModel.CurrentPassword.Equals(changePasswordModel.NewPassword))
+                return new AuthModel { Message = "New and Old Password cannot be the same!" };
+            if (!changePasswordModel.NewPassword.Equals(changePasswordModel.ConfirmNewPassword))
+            {
+                return new AuthModel { Message = "Confirm the new Password!" };
+            }
+            var result = await _userManager.ChangePasswordAsync(user, changePasswordModel.CurrentPassword, changePasswordModel.NewPassword);
             if (!result.Succeeded)
                 return new AuthModel { Message = "Something went wronge!" };
             return new AuthModel { Message = "Your password has ben reseted successfully." };
@@ -200,9 +212,19 @@ namespace UserAuthentication.Services
                 return new AuthModel { Message = $"An Error Occured while Deleting the user{UserName}" };
             return new AuthModel { Message = $"User with UserName: '{UserName}' has been Deleted successfully" };
         }
-        //public Task LogoutAsync()
-        //{
-        //    throw new NotImplementedException();
-        //}
+        public async Task<bool> LogoutAsync(string refreshToken)
+        {
+            // Revoke the refresh token
+            var result = await _tokenService.RevokeTokenAsync(refreshToken);
+
+            if (!result)
+            {
+                _logger.LogInformation("Failed to revoke token during logout.");
+                return false;
+            }
+
+            _logger.LogInformation("User logged out successfully.");
+            return true;
+        }
     }
 }
