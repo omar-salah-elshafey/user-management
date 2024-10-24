@@ -3,4 +3,5 @@ after that I'll find a real project to work on it.
 if you have any suggestions please tell me and I'll be more than happy to hear from you.
 I'll also provide a screenshot for the things I've finished till now.
 
-![Screenshot 2024-10-23 211823](https://github.com/user-attachments/assets/1f73d144-3f19-419f-b289-3a57f749df5b)
+
+![Screenshot 2024-10-24 192606](https://github.com/user-attachments/assets/95c37a4a-7cf3-4107-83ff-ea7a3adc10b9)
