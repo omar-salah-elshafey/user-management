@@ -15,6 +15,6 @@ namespace UserAuthentication.Services
         Task<List<UserDto>> GetUSersAsync();
         Task<AuthModel> DeleteUserAsync(string userName);
         Task<bool> LogoutAsync(string refreshToken);
-
+        Task<UpdateUserModel> UpdateUserAsync(UpdateUserModel updateUserModel);
     }
 }

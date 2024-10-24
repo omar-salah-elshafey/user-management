@@ -226,5 +226,26 @@ namespace UserAuthentication.Services
             _logger.LogInformation("User logged out successfully.");
             return true;
         }
+
+        public async Task<UpdateUserModel> UpdateUserAsync(UpdateUserModel updateUserModel)
+        {
+            if (string.IsNullOrEmpty(updateUserModel.UserName) 
+                || string.IsNullOrEmpty(updateUserModel.FirstName) || string.IsNullOrEmpty(updateUserModel.LastName))
+                return new UpdateUserModel { Message = "UserName, FirstName, and LastName are required!" };
+            var user = await _userManager.FindByNameAsync(updateUserModel.UserName);
+            if (user is null)
+                return new UpdateUserModel { Message = $"User with UserName: {updateUserModel.UserName} isn't found!" };
+            user.UserName = updateUserModel.UserName;
+            user.FirstName = updateUserModel.FirstName;
+            user.LastName = updateUserModel.LastName;
+            await _userManager.UpdateAsync(user);
+            return new UpdateUserModel
+            {
+                UserName = updateUserModel.UserName,
+                FirstName = updateUserModel.FirstName,
+                LastName = updateUserModel.LastName,
+                Message = "User has been Updated successfully."
+            };
+        }
     }
 }

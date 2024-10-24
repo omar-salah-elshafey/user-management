@@ -118,15 +118,12 @@ namespace UserAuthentication.Controllers
             var user = await _userManager.FindByNameAsync(roleModel.UserName);
             var result = await _authService.AddRoleAsync(roleModel);
 
-            if (!result.Equals($"User {user.UserName} has been assignd to Role {roleModel.Role} Successfully :)"))
-                return BadRequest(result);
-
-            return Ok($"The user: {user.UserName} has been assignd to Role {roleModel.Role} Successfully");
+            return Ok(result);
         }
 
         [HttpGet("get-users")]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> GetUsers()
+        public async Task<IActionResult> GetUsersAsync()
         {
             var users = await _authService.GetUSersAsync();
             if (users == null || !users.Any())
@@ -141,9 +138,7 @@ namespace UserAuthentication.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
             var result = await _authService.DeleteUserAsync(UserName);
-            if (result.Message.Contains("isn't found") || result.Message.Contains("An error occurred"))
-                return BadRequest(result.Message);
-            return Ok($"User with UserName: '{UserName}' has been Deleted successfully");
+            return Ok(result.Message);
         }
 
         [HttpPost("logout")]
@@ -157,6 +152,16 @@ namespace UserAuthentication.Controllers
 
             RemoveRefreshTokenCookie(refreshToken);
             return Ok(new { message = "Successfully logged out" });
+        }
+
+        [HttpPost("update-user")]
+        [Authorize]
+        public async Task<IActionResult> UpdateUserAsync(UpdateUserModel updateUserModel)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+            var result = await _authService.UpdateUserAsync(updateUserModel);
+            return Ok(result);
         }
 
         private void SetRefreshTokenCookie(string refreshToken, DateTime ex)
