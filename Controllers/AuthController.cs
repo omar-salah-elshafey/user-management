@@ -36,7 +36,7 @@ namespace UserAuthentication.Controllers
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
-            var result = await _authService.RegisterAsync(registerUser);
+            var result = await _authService.RegisterAsync(registerUser, "user");
 
             if (!result.IsAuthenticated)
                 return BadRequest(result.Message);

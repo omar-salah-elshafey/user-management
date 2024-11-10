@@ -35,7 +35,7 @@ namespace UserAuthentication.Services
             _tokenProviderOptions = tokenProviderOptions;
         }
 
-        public async Task<AuthModel> RegisterAsync(RegisterUser registerUser)
+        public async Task<AuthModel> RegisterAsync(RegisterUser registerUser, string role)
         {
 
             //check if user exists
@@ -43,10 +43,7 @@ namespace UserAuthentication.Services
                 return new AuthModel { Message = "This Email is already used!" };
             if (await _userManager.FindByNameAsync(registerUser.UserName) is not null)
                 return new AuthModel { Message = "This UserName is already used!" };
-            // Check if the role exists
-            //if (!await _roleManager.RoleExistsAsync(registerUser.Role))
-            //    return new AuthModel { Message = "Role does not exist." };
-            // Create the new user
+            
             var user = new ApplicationUser
             {
                 FirstName = registerUser.FirstName,
@@ -65,9 +62,7 @@ namespace UserAuthentication.Services
                 return new AuthModel { Message = errors };
             }
             // Assign the user to the specified role
-            await _userManager.AddToRoleAsync(user, "User");
-
-            //var roles = await _userManager.GetRolesAsync(user);
+            await _userManager.AddToRoleAsync(user, role);
 
             //generating the token to verify the user's email
             var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
@@ -83,7 +78,7 @@ namespace UserAuthentication.Services
                 Email = user.Email,
                 IsAuthenticated = true,
                 Username = user.UserName,
-                Message = "A verification code has been sent to your Email.\n Verify Your Email to be able to login :) "
+                Message = $"A verification code has been sent to your Email.\n Verify Your Email to be able to login :) "
             };
 
         }

@@ -7,7 +7,7 @@ namespace UserAuthentication.Services
 {
     public interface IAuthService
     {
-        Task<AuthModel> RegisterAsync(RegisterUser registerUser);
+        Task<AuthModel> RegisterAsync(RegisterUser registerUser, string role);
         Task<AuthModel> LoginAsync(LoginModel loginModel);
         Task<string> AddRoleAsync(AddRoleModel roleModel);
         Task<AuthModel> ResetPasswordAsync(ResetPasswordModel resetPasswordModel);
